@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "493177425328",
+    "firebase_url": "https://iot-fish-feeder-641f4-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "iot-fish-feeder-641f4",
+    "storage_bucket": "iot-fish-feeder-641f4.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:493177425328:android:bda940f6ffee361f075a75",
+        "android_client_info": {
+          "package_name": "com.iot_feeder"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "493177425328-hf6p7q7rh2dv4vkheaolvcqtjs85tj74.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBIz7Z8id3c6nVTChm5lflNivWGdmnTYoY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "493177425328-hf6p7q7rh2dv4vkheaolvcqtjs85tj74.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
