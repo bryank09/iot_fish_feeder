@@ -1,23 +1,76 @@
 import React, { useState, useEffect, Component } from 'react'
-import { Text, View, FlatList, SectionList, Alert, Switch, TextInput, Modal, Pressable, StyleSheet, Button } from 'react-native';
+import { Text, View, Dimensions, TouchableOpacity, FlatList, SectionList, Alert, Switch, TextInput, Modal, Pressable, StyleSheet, Button } from 'react-native';
 import CircularProgress from 'react-native-circular-progress-indicator';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
-import RNSpeedometer from 'react-native-speedometer';
+// import RNSpeedometer from 'react-native-speedometer';
 import DatePicker from 'react-native-date-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import PushNotification from 'react-native-push-notification';
+import { NavigationContainer } from '@react-navigation/native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { LineChart, BarChart } from "react-native-chart-kit";
+import database from '@react-native-firebase/database';
+
+// import Swiper from 'react-native-swiper';
 // import { MQTT } from '../actions/mqtt.js';
 
 const Row = ({ children }) => (
     <View style={styles.row}>{children}</View>
 );
 
+const fetchFirebaseData = (sensor, setSensorData, type) => {
+
+    database()
+        .ref('/username/bryankeane/sensors/' + sensor)
+        .once('value')
+        .then((snapshot) => {
+            const data = snapshot.val();
+            if(type == 'chart'){
+                const pushKey = Object.keys(data)[0];
+                const lastAddedData = data[pushKey];
+                setSensorData(lastAddedData);
+            }
+            // console.log(sensor + ' Data: ', data);
+            setSensorData(data);
+        })
+        .catch((error) => {
+            console.error('Error fetching ' + sensor + ' data from Firebase: ', error);
+        });
+};
+
 export const Charts = () => {
     state = {
         value: 50,
     };
 
+    const [phChart, setPhChart] = useState(null);
+    const [turbidityChart, setTurbidityChart] = useState(null);
+    const [volumeChart, setVolumeChart] = useState(null);
+
+    useEffect(() => {
+        fetchFirebaseData('ph', setPhChart, 'chart');
+        fetchFirebaseData('turbidity', setTurbidityChart, 'chart');
+        fetchFirebaseData('volume', setVolumeChart, 'chart');
+
+        const intervalId = setInterval(() => {
+            fetchFirebaseData('ph', setPhChart, 'chart');
+            fetchFirebaseData('turbidity', setTurbidityChart, 'chart');
+            fetchFirebaseData('volume', setVolumeChart, 'chart');
+        }, 600000);
+
+        return () => clearInterval(intervalId);
+    }, []);
+    useEffect(() => {
+        if (phChart != null) {
+            setPhChart(phChart);
+        }
+        if (turbidityChart != null) {
+            setTurbidityChart(turbidityChart);
+        }
+        if (volumeChart != null) {
+            setVolumeChart(volumeChart);
+        }
+    }, [phChart, turbidityChart, volumeChart]);
     onChange = (value) => this.setState({ value: parseInt(value) });
     const labels = [
         {
@@ -43,7 +96,7 @@ export const Charts = () => {
                 <View style={[styles.col, { flex: 1 }]}>
                     <Text style={styles.chartTitle}>Food Volume Measurement</Text>
                     <CircularProgress
-                        value={50}
+                        value={volumeChart}
                         activeStrokeColor={'#000046'}
                         activeStrokeSecondaryColor={'#1CB5E0'}
                         radius={80}
@@ -56,10 +109,19 @@ export const Charts = () => {
             <Row>
                 <View style={[styles.col, { flex: 1, paddingBottom: 50 }]}>
                     <Text style={styles.chartTitle}>Water Turbidity Measurement</Text>
-                    <RNSpeedometer
+                    <CircularProgress
+                        value={turbidityChart}
+                        activeStrokeColor={'#000046'}
+                        activeStrokeSecondaryColor={'#1CB5E0'}
+                        radius={80}
+                        activeStrokeWidth={20}
+                        inActiveStrokeWidth={20}
+                        valueSuffix={'%'}
+                    />
+                    {/* <RNSpeedometer
                         value={this.state.value}
                         size={size}
-                        labels={labels} />
+                        labels={labels} /> */}
                 </View>
             </Row>
             <Row>
@@ -67,16 +129,200 @@ export const Charts = () => {
                     {/* <TextInput placeholder="Speedometer Value" style={styles.textInput} onChangeText={this.onChange} /> */}
                     <Text style={styles.chartTitle}>Ph Level Measurement</Text>
                     {/* https://github.com/pritishvaidya/react-native-speedometer#defaults */}
-                    <RNSpeedometer
+                    <CircularProgress
+                        value={phChart}
+                        activeStrokeColor={'#000046'}
+                        activeStrokeSecondaryColor={'#1CB5E0'}
+                        radius={80}
+                        activeStrokeWidth={20}
+                        inActiveStrokeWidth={20}
+                        valueSuffix={'%'}
+                    />
+                    {/* <RNSpeedometer
                         // value={this.state.value}
                         value={90}
                         size={size}
-                        labels={labels} />
+                        labels={labels} /> */}
+                </View>
+            </Row>
+            <Row>
+                <View style={[styles.col, { flex: 1 }]}>
+                    <Text>Last Updated: { }</Text>
                 </View>
             </Row>
         </View>
     )
 };
+
+export const Diagrams = () => {
+    const screenWidth = Dimensions.get("window").width;
+    const chartConfig = {
+        fillShadowGradientFrom: "#000000",
+        fillShadowGradientTo: "#a0a0a0",
+        backgroundGradientFrom: "#ffffff",
+        backgroundGradientTo: "#ffffff",
+        decimalPlaces: 2, // optional, defaults to 2dp
+        color: (opacity = 1) => `rgb(231, 33, 33)`,
+        labelColor: (opacity = 1) => "#000000",
+        style: {
+            borderRadius: 16
+        },
+    }
+    // const addData = () => {
+    //     const date = new Date().toISOString().replace(/[.:]/g, "_");
+    //     const value = Math.floor(Math.random() * 100);
+
+    //     database()
+    //         .ref(`/username/bryankeane/sensors/turbidity/${date}`)
+    //         .set(value);
+    // }
+
+    const [phSensor, setPhSensor] = useState(null);
+    const [turbiditySensor, setTurbiditySensor] = useState(null);
+    const [volumeSensor, setVolumeSensor] = useState(null);
+    const [phLabel, setPhLabel] = useState(["empty"]);
+    const [phData, setPhData] = useState([10]);
+    const [turbidityLabel, setTurbidityLabel] = useState(["empty"]);
+    const [turbidityData, setTurbidityData] = useState([10]);
+    const [volumeLabel, setVolumeLabel] = useState(["empty"]);
+    const [volumeData, setVolumeData] = useState([10]);
+
+    const phDataset = {
+        labels: phLabel,
+        datasets: [
+            {
+                data: phData,
+                color: (opacity = 1) => `rgb(65, 92, 244)`,
+                strokeWidth: 2
+            }
+        ],
+    };
+    const turbidityDataset = {
+        labels: turbidityLabel,
+        datasets: [
+            {
+                data: turbidityData,
+                color: (opacity = 1) => `rgb(65, 92, 244)`,
+                strokeWidth: 2
+            }
+        ],
+    };
+    const volumeDataset = {
+        labels: volumeLabel,
+        datasets: [
+            {
+                data: volumeData,
+                color: (opacity = 1) => `rgb(65, 92, 244)`,
+                strokeWidth: 2
+            }
+        ],
+    };
+
+    useEffect(() => {
+        fetchFirebaseData('ph', setPhSensor);
+        fetchFirebaseData('turbidity', setTurbiditySensor);
+        fetchFirebaseData('volume', setVolumeSensor);
+
+        const intervalId = setInterval(() => {
+            fetchFirebaseData('ph', setPhSensor);
+            fetchFirebaseData('turbidity', setTurbiditySensor);
+            fetchFirebaseData('volume', setVolumeSensor);
+        }, 600000);
+
+        return () => clearInterval(intervalId);
+    }, []);
+
+    const processDate = (dateList, setLabel) => {
+        const processedDate = dateList.map(dateString => {
+            const date = new Date(dateString.replace(/_/g, ':').replace(/:(\d{3})Z$/, '.$1Z'));
+            const hours = date.getUTCSeconds();
+
+            return hours;
+        });
+
+        setLabel(processedDate);
+    };
+
+    useEffect(() => {
+        if (phSensor != null) {
+            processDate(Object.keys(phSensor), setPhLabel)
+            setPhData(Object.values(phSensor))
+        }
+        if (turbiditySensor != null) {
+            processDate(Object.keys(turbiditySensor), setTurbidityLabel)
+            setTurbidityData(Object.values(turbiditySensor))
+        }
+        if (volumeSensor != null) {
+            processDate(Object.keys(volumeSensor), setVolumeLabel)
+            setVolumeData(Object.values(volumeSensor))
+        }
+    }, [phSensor, turbiditySensor, volumeSensor]);
+
+    return (
+        <View style={{ flex: 1, flexDirection: 'column' }}>
+            {/* <TouchableOpacity onPress={addData}>
+                <Text>Add Data</Text>
+            </TouchableOpacity> */}
+            <Row>
+                <View style={[styles.col, { flex: 1 }]}>
+                    <Text style={styles.chartTitle}>Food Volume Measurement</Text>
+                    <LineChart
+                        data={volumeDataset}
+                        width={screenWidth}
+                        height={200}
+                        chartConfig={chartConfig}
+                        withDots={false}
+                        withOuterLines={false}
+                        withInnerLines={false}
+                    />
+                </View>
+            </Row>
+            <Row>
+                <View style={[styles.col, { flex: 1 }]}>
+                    <Text style={styles.chartTitle}>Water Turbidity Measurement</Text>
+                    <LineChart
+                        data={turbidityDataset}
+                        width={screenWidth}
+                        height={200}
+                        chartConfig={chartConfig}
+                        withDots={false}
+                        withOuterLines={false}
+                        withInnerLines={false}
+                    />
+                </View>
+            </Row>
+            <Row>
+                <View style={[styles.col, { flex: 1 }]}>
+                    <Text style={styles.chartTitle}>Ph Level Measurement</Text>
+                    <LineChart
+                        data={phDataset}
+                        width={screenWidth}
+                        height={200}
+                        chartConfig={chartConfig}
+                        withDots={false}
+                        withOuterLines={false}
+                        withInnerLines={false}
+                    />
+                </View>
+            </Row>
+        </View>
+    )
+};
+
+export const AnalyticPage = () => {
+    const Tab = createBottomTabNavigator();
+    return (
+        <NavigationContainer>
+            <Tab.Navigator tabBarLabel={{ focused: false }}
+                screenOptions={{
+                    headerShown: false
+                }}>
+                <Tab.Screen name="Charts" component={Charts} />
+                <Tab.Screen name="Diagram" component={Diagrams} />
+            </Tab.Navigator>
+        </NavigationContainer>
+    );
+}
 
 export const Alarm = () => {
     const showSection = (section) => {
@@ -128,12 +374,12 @@ const AutoConfig = () => {
         ]);
     return (
         <View style={{ flexDirection: 'column', rowGap: 20 }}>
-            <Text style={{ fontWeight: 'bold', fontSize: 30 , color: "#e56b6f"}}>AUTO CONFIGURATION</Text>
-            <Text style={{ fontWeight: 'bold', fontSize: 20 , color: "#1CB5E0"}}>Fish Type</Text>
+            <Text style={{ fontWeight: 'bold', fontSize: 30, color: "#e56b6f" }}>AUTO CONFIGURATION</Text>
+            <Text style={{ fontWeight: 'bold', fontSize: 20, color: "#1CB5E0" }}>Fish Type</Text>
             <TextInput style={styles.inputContainer} inputMode='text' placeholder="Fish Type"></TextInput>
-            <Text style={{ fontWeight: 'bold', fontSize: 20 , color: "#1CB5E0"}}>Living Condition</Text>
+            <Text style={{ fontWeight: 'bold', fontSize: 20, color: "#1CB5E0" }}>Living Condition</Text>
             <TextInput style={styles.inputContainer} placeholder="Salt Water / Sea Water"></TextInput>
-            <Text style={{ fontWeight: 'bold', fontSize: 20 , color: "#1CB5E0"}}>Fish Number</Text>
+            <Text style={{ fontWeight: 'bold', fontSize: 20, color: "#1CB5E0" }}>Fish Number</Text>
             <TextInput style={styles.inputContainer} inputMode='numeric' placeholder="Total Fish"></TextInput>
             <Button
                 onPress={createAutoConfig}
@@ -161,7 +407,7 @@ const History = () => {
     ];
     return (
         <View>
-            <Text style={{ fontWeight: 'bold', fontSize: 30 , color: "#e56b6f"}}>HISTORY</Text>
+            <Text style={{ fontWeight: 'bold', fontSize: 30, color: "#e56b6f" }}>HISTORY</Text>
             <SectionList
                 sections={DATA}
                 keyExtractor={(item, index) => item + index}
@@ -237,7 +483,7 @@ const AlarmList = () => {
 
     return (
         <View>
-            <Text style={{ fontWeight: 'bold', fontSize: 30 , color: "#e56b6f", paddingBottom: 10}}>Feeding Alarms</Text>
+            <Text style={{ fontWeight: 'bold', fontSize: 30, color: "#e56b6f", paddingBottom: 10 }}>Feeding Alarms</Text>
             <Button onPress={createAlarm} title="Create Alarm" color="#1c4ae0" />
             <Modal
                 animationType="slide"
@@ -311,6 +557,22 @@ const AlarmFormats = ({ alarms, setAlarms, saveAlarms }) => {
     );
 }
 
+export const AlarmPage = () => {
+    const Tab = createBottomTabNavigator();
+    return (
+        <NavigationContainer>
+            <Tab.Navigator tabBarLabel={{ focused: false }}
+                screenOptions={{
+                    headerShown: false
+                }}>
+                <Tab.Screen name="Alarms" component={AlarmList} />
+                <Tab.Screen name="History" component={History} />
+                <Tab.Screen name="AutoConfig" component={AutoConfig} />
+            </Tab.Navigator>
+        </NavigationContainer>
+    );
+}
+
 const styles = StyleSheet.create({
     inputContainer: {
         borderLeftWidth: 1,
@@ -333,7 +595,7 @@ const styles = StyleSheet.create({
     },
     chartTitle: {
         fontSize: 20,
-        padding: 20,
+        padding: 10,
         fontWeight: 'bold',
         color: 'black'
     },

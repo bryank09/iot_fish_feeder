@@ -26,7 +26,7 @@ import {
 import { Head } from './components/Head.js';
 import { Prototype } from './components/Prototype.js';
 import { Monitoring, Timer } from './components/DisplayPanel.js';
-import { Charts, Alarm } from './components/BottomSheet.js';
+import { AlarmPage, AnalyticPage } from './components/BottomSheet.js';
 // import { Login } from './components/login.js';
 
 import Swiper from 'react-native-swiper';
@@ -45,11 +45,11 @@ function App(): JSX.Element {
   const bottomSheetRef = useRef(null);
 
   // variables
-  const snapPoints = useMemo(() => ['5%', '100%'], []);
+  const snapPoints = useMemo(() => ['3%', '100%'], []);
 
   // callbacks
   const handleSheetChanges = useCallback((index: number) => {
-    // console.log('handleSheetChanges', index);
+    console.log('handleSheetChanges', index);
   }, []);
   const [display, setDisplay] = useState("alarm");
 
@@ -106,11 +106,14 @@ function App(): JSX.Element {
               <SwiperDisplay />
               <BottomSheet
                 ref={bottomSheetRef}
-                index={1}
+                index={0}
                 snapPoints={snapPoints}
                 onChange={handleSheetChanges}
+                // enableHandlePanningGesture={false}
+                // enableContentPanningGesture={false}
+                // enablePanDownToClose ={true}
               >
-                {display == "monitoring" ? <Charts /> : <Alarm />}
+                {display == "monitoring" ? <AlarmPage /> : <AnalyticPage />}
               </BottomSheet>
             </GestureHandlerRootView>
           </ImageBackground>

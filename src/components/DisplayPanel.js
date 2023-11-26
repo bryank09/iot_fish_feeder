@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo, useCallback } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 import Ionicon from 'react-native-vector-icons/Ionicons';
@@ -7,49 +7,85 @@ import { Text, View, ScrollView, StyleSheet, Button, Dimensions, Alert } from 'r
 const { width, height } = Dimensions.get('window');
 import DatePicker from 'react-native-date-picker';
 import { format } from 'date-fns';
+import database from '@react-native-firebase/database';
+
+const fetchFirebaseData = (sensor, setSensorData) => {
+    database()
+        .ref('/username/bryankeane/sensors/' + sensor)
+        .once('value')
+        .then((snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                const pushKey = Object.keys(data)[0];
+                const lastAddedData = data[pushKey];
+                console.log(lastAddedData)
+                setSensorData(lastAddedData);
+            }
+        })
+        .catch((error) => {
+            console.error('Error fetching ' + sensor + ' data from Firebase: ', error);
+        });
+};
 
 export const Monitoring = () => {
-    const ReadData = ({ children, type, value }) => {
-        const [date, setDate] = useState('black');
-        var textColor;
-        switch (type) {
-            case 'ph':
-                if (value >= 11 || value <= 3) {
-                    textColor = 'red';
-                } else if (value >= 8 || value <= 6) {
-                    textColor = 'yellow';
-                } else {
-                    textColor = 'green';
-                }
-                break;
-            case 'turbidity':
-                if (value >= 100 || value <= 0) {
-                    textColor = 'red';
-                } else if (value >= 75 || value <= 25) {
-                    textColor = 'yellow';
-                } else {
-                    textColor = 'green';
-                }
-                break;
-            case 'volume':
-                if (value >= 100 || value <= 0) {
-                    textColor = 'red';
-                } else if (value >= 75 || value <= 25) {
-                    textColor = 'yellow';
-                } else {
-                    textColor = 'green';
-                }
-                break;
+
+    const [phSensor, setPhSensor] = useState(null);
+    const [turbiditySensor, setTurbiditySensor] = useState(null);
+    const [volumeSensor, setVolumeSensor] = useState(null);
+    const [phTextColor, setPhTextColor] = useState('black');
+    const [turbidityTextColor, setTurbidityTextColor] = useState('black');
+    const [volumeTextColor, setVolumeTextColor] = useState('black');
+
+    useEffect(() => {
+        fetchFirebaseData('ph', setPhSensor);
+        fetchFirebaseData('turbidity', setTurbiditySensor);
+        fetchFirebaseData('volume', setVolumeSensor);
+
+        const intervalId = setInterval(() => {
+            fetchFirebaseData('ph', setPhSensor);
+            fetchFirebaseData('turbidity', setTurbiditySensor);
+            fetchFirebaseData('volume', setVolumeSensor);
+        }, 60000);
+
+        return () => clearInterval(intervalId);
+    }, []);
+    useEffect(() => {
+        if (phSensor != null) {
+            setPhSensor(phSensor);
+            if (phSensor >= 11 || phSensor <= 3) {
+                setPhTextColor('red');
+            } else if (phSensor >= 8 || phSensor <= 6) {
+                setPhTextColor('yellow');
+            } else {
+                setPhTextColor('green');
+            }
+        }
+        if (turbiditySensor != null) {
+            setTurbiditySensor(turbiditySensor);
+            if (turbiditySensor >= 0 && turbiditySensor <= 25) {
+                setTurbidityTextColor('red');
+            } else if (turbiditySensor >= 25 || turbiditySensor <= 75) {
+                setTurbidityTextColor('yellow');
+            } else {
+                setTurbidityTextColor('green');
+            }
+        }
+        if (volumeSensor != null) {
+            setVolumeSensor(volumeSensor);
+            if (volumeSensor >= 0 && volumeSensor <= 25) {
+                setVolumeTextColor('red');
+            } else if (volumeSensor >= 25 && volumeSensor <= 75) {
+                setVolumeTextColor('yellow');
+            } else {
+                setVolumeTextColor('green');
+            }
         }
 
-        return (
-            <Text style={[styles.monitorText, { color: textColor}]}>{value} {children}</Text>
-        );
-    }
+    }, [phSensor, turbiditySensor, volumeSensor]);
 
     return (
         <View style={styles.innerContainer}>
-            <Text style={[styles.displayTitle, {paddingBottom: 50 }]}>Monitoring</Text>
+            <Text style={[styles.displayTitle, { paddingBottom: 50 }]}>Monitoring</Text>
             {/* <Row>
                 <Col numRows={2}><Text>10*</Text></Col>
                 <Col numRows={1}><FontAwesome5 name="temperature-high" size={30} /></Col>
@@ -57,7 +93,7 @@ export const Monitoring = () => {
             </Row> */}
             <Row>
                 <View style={[styles.column, { flex: 2, alignItems: 'flex-end' }]}>
-                    <ReadData type='ph' value={7}>PH</ReadData>
+                    <Text style={[styles.monitorText, { color: phTextColor }]}>{phSensor} PH</Text>
                 </View>
                 <View style={[styles.column, { flex: 1, alignItems: 'center' }]}>
                     <FontAwesome5 name="water" size={30} />
@@ -68,8 +104,7 @@ export const Monitoring = () => {
             </Row>
             <Row>
                 <View style={[styles.column, { flex: 2, alignItems: 'flex-end' }]}>
-                    <ReadData type='turbidity' value={200} >NTU</ReadData>
-                    {/* <Text>20 NTU</Text> */}
+                    <Text style={[styles.monitorText, { color: turbidityTextColor }]}>{turbiditySensor} NTU</Text>
                 </View>
                 <View style={[styles.column, { flex: 1, alignItems: 'center' }]}>
                     <Ionicon name="water-outline" size={30} />
@@ -80,13 +115,13 @@ export const Monitoring = () => {
             </Row>
             <Row>
                 <View style={[styles.column, { flex: 2, alignItems: 'flex-end' }]}>
-                    <ReadData type='turbidity' value={80}>%</ReadData>
-                    {/* <Text>50%</Text> */}
+                    <Text style={[styles.monitorText, { color: volumeTextColor}]}>{volumeSensor} %</Text>
                 </View>
                 <View style={[styles.column, { flex: 1, alignItems: 'center' }]}>
                     <Ionicon name="beaker" size={30} />
                 </View>
                 <View style={[styles.column, { flex: 2, alignItems: 'flex-start' }]}>
+
                     <Text style={styles.monitorText}>Food Volume</Text>
                 </View>
             </Row>
@@ -159,7 +194,7 @@ const styles = StyleSheet.create({
         flex: 1,
         alignItems: 'center',
     },
-    monitorText:{
+    monitorText: {
         fontSize: 18,
         color: 'black'
     }
