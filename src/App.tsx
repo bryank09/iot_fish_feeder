@@ -47,10 +47,10 @@ function App(): JSX.Element {
   // variables
   const snapPoints = useMemo(() => ['3%', '100%'], []);
 
-  // callbacks
-  const handleSheetChanges = useCallback((index: number) => {
-    console.log('handleSheetChanges', index);
-  }, []);
+  // // callbacks
+  // const handleSheetChanges = useCallback((index: number) => {
+  //   console.log('handleSheetChanges', index);
+  // }, []);
   const [display, setDisplay] = useState("alarm");
 
   const SwiperDisplay = () => {
@@ -108,12 +108,12 @@ function App(): JSX.Element {
                 ref={bottomSheetRef}
                 index={0}
                 snapPoints={snapPoints}
-                onChange={handleSheetChanges}
+                // onChange={handleSheetChanges}
                 // enableHandlePanningGesture={false}
                 // enableContentPanningGesture={false}
                 // enablePanDownToClose ={true}
               >
-                {display == "monitoring" ? <AlarmPage /> : <AnalyticPage />}
+                {display == "monitoring" ?  <AnalyticPage /> : <AlarmPage />}
               </BottomSheet>
             </GestureHandlerRootView>
           </ImageBackground>

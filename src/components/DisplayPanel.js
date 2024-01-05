@@ -3,11 +3,13 @@ import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 import Ionicon from 'react-native-vector-icons/Ionicons';
 
-import { Text, View, ScrollView, StyleSheet, Button, Dimensions, Alert } from 'react-native';
+import { Text, View, StyleSheet, Button, Dimensions, Alert } from 'react-native';
 const { width, height } = Dimensions.get('window');
 import DatePicker from 'react-native-date-picker';
 import { format } from 'date-fns';
 import database from '@react-native-firebase/database';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import init from 'react_native_mqtt';
 
 const fetchFirebaseData = (sensor, setSensorData) => {
     database()
@@ -18,7 +20,6 @@ const fetchFirebaseData = (sensor, setSensorData) => {
             if (data) {
                 const pushKey = Object.keys(data)[0];
                 const lastAddedData = data[pushKey];
-                console.log(lastAddedData)
                 setSensorData(lastAddedData);
             }
         })
@@ -115,7 +116,7 @@ export const Monitoring = () => {
             </Row>
             <Row>
                 <View style={[styles.column, { flex: 2, alignItems: 'flex-end' }]}>
-                    <Text style={[styles.monitorText, { color: volumeTextColor}]}>{volumeSensor} %</Text>
+                    <Text style={[styles.monitorText, { color: volumeTextColor }]}>{volumeSensor} %</Text>
                 </View>
                 <View style={[styles.column, { flex: 1, alignItems: 'center' }]}>
                     <Ionicon name="beaker" size={30} />
@@ -129,18 +130,99 @@ export const Monitoring = () => {
     )
 };
 
+init({
+    size: 10000,
+    storageBackend: AsyncStorage,
+    defaultExpires: 1000 * 3600 * 24,
+    enableCache: true,
+    reconnect: true,
+    sync: {}
+});
+
 export const Timer = () => {
     const [date, setDate] = useState(new Date());
+    const [connected, setConnected] = useState(false);
+    const [errorMsg, setErrorMsg] = useState(null);
+    const [showError, setShowError] = useState(false);
+    const [client, setClient] = useState(null);
+
+    function onConnect() {
+        console.log("onConnect");
+        setConnected(true);
+        setShowError(false);
+        // displayErrorMsg("MQTT connection lost. Please check your network and reconnect.");
+    }
+
+    function onFailed() {
+        console.log("onFailedConnection");
+        displayErrorMsg("Failed in connecting to the MQTT broker");
+    }
+
+    function onConnectionLost(responseObject) {
+        if (responseObject.errorCode !== 0) {
+            console.log("onConnectionLost:" + responseObject.errorMessage);
+            setConnected(false)
+            displayErrorMsg("MQTT broker connection lost. Please check your network and reconnect");
+        }
+    }
+
+    useEffect(() => {
+        const newClient = new Paho.MQTT.Client('c92518f55f1a470a9811ddd925721d5a.s1.eu.hivemq.cloud',
+            8884,
+            "clientID-" + parseInt(Math.random() * 100));
+        newClient.connect({
+            onSuccess: onConnect,
+            onFailure: onFailed,
+            useSSL: true,
+            reconnect: true,
+            userName: "bryankeane",
+            password: "Password123",
+        });
+
+        newClient.onConnectionLost = onConnectionLost;
+
+        setClient(newClient);
+    }, []);
+
+    const sendESPCommand = () => {
+        if (connected) {
+                const message = new Paho.MQTT.Message('Rotate Motor');
+                message.destinationName = 'reactnative/aquaconnect';
+                client.send(message);
+        } else
+            noESPConnection('You are not connected to the your device');
+    };
+
+    const noESPConnection = (msg) => {
+        Alert.alert(msg, '', [
+            {
+                text: 'OK'
+            },
+        ])
+    };
+
+    const displayErrorMsg = (msg) => {
+        setErrorMsg(msg);
+        setShowError(true);
+    }
+
     return (
         <View style={styles.innerContainer}>
             <Text style={styles.displayTitle}>Feed Timer</Text>
             <Button
                 title="FEED NOW!"
-                onPress={feedNowAlert}
+                onPress={sendESPCommand}
                 color='#1c4ae0'
             />
             <DatePicker date={date} onDateChange={setDate} mode="time" />
-            <Text>Last Feed: {format(date, 'HH:mma - MM/dd/yyyy')}</Text>
+            <View>
+                <Text>Last Feed: {format(date, 'HH:mma - MM/dd/yyyy')}</Text>
+                {showError && (
+                    <Text style={{ color: 'red' }}>
+                        {errorMsg}
+                    </Text>
+                )}
+            </View>
         </View>
     )
 };
@@ -148,15 +230,6 @@ export const Timer = () => {
 const Row = ({ children }) => (
     <View style={styles.row}>{children}</View>
 );
-
-const feedNowAlert = () =>
-    Alert.alert('Are you sure you want to feed the fish', '', [
-        {
-            text: 'Cancel',
-            style: 'cancel',
-        },
-        { text: 'CONFIRM', onPress: () => console.log('OK Pressed') },
-    ]);
 
 const styles = StyleSheet.create({
     container: {
